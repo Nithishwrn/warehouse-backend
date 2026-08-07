@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: warehouse-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: warehouse-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_DRIVER
+        value: org.postgresql.Driver
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: warehouse-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: warehouse-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: warehouse-db
+    plan: free
