@@ -1,4 +1,4 @@
-﻿package com.warehouse.config;
+package com.warehouse.config;
 
 import com.warehouse.security.CustomUserDetailsService;
 import com.warehouse.security.JwtAuthFilter;
