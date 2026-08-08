@@ -1,4 +1,4 @@
-package com.warehouse.config;
+﻿package com.warehouse.config;
 
 import com.warehouse.security.CustomUserDetailsService;
 import com.warehouse.security.JwtAuthFilter;
@@ -17,20 +17,25 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // enables @PreAuthorize on service/controller methods
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
+
+    @Value("${app.cors.allowed-origins:http://localhost:8080,http://127.0.0.1:5500,null}")
+    private String allowedOrigins;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -57,30 +62,20 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public
                 .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
-
-                // Users: admin only (creating/editing accounts and roles)
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
-
-                // Item writes: admin + manager. Reads: any authenticated role.
                 .requestMatchers(HttpMethod.POST, "/api/items/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers(HttpMethod.PUT, "/api/items/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers(HttpMethod.DELETE, "/api/items/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers(HttpMethod.PATCH, "/api/items/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers(HttpMethod.GET, "/api/items/**").hasAnyRole("ADMIN", "MANAGER", "STAFF")
-
-                // Orders: creation/deletion admin+manager; advancing status allowed for all roles (picking is floor work)
                 .requestMatchers(HttpMethod.POST, "/api/orders").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers(HttpMethod.DELETE, "/api/orders/**").hasAnyRole("ADMIN", "MANAGER")
                 .requestMatchers("/api/orders/**").hasAnyRole("ADMIN", "MANAGER", "STAFF")
-
-                // Analytics/dashboard: admin + manager
                 .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "MANAGER")
-
                 .anyRequest().authenticated()
             )
-            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // allow H2 console frame
+            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -90,7 +85,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
